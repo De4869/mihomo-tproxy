@@ -49,6 +49,7 @@ fun SettingsScreen(
     var dialog by remember { mutableStateOf<String?>(null) }
     var showAppUpdate by remember { mutableStateOf(false) }
     var showIpv6Warning by remember { mutableStateOf(false) }
+    var showTlsWarning by remember { mutableStateOf(false) }
     val uriHandler = androidx.compose.ui.platform.LocalUriHandler.current
 
     androidx.compose.runtime.LaunchedEffect(state.appUpdateVersion) {
@@ -148,6 +149,18 @@ fun SettingsScreen(
                 SettingRow("TUN 栈", s.tunStack, onClick = { dialog = "stack" })
                 Divider()
                 SettingRow("MTU", s.mtu.toString(), onClick = { dialog = "mtu" })
+                Divider()
+                SettingRow(
+                    "跳过订阅证书校验",
+                    if (s.skipTlsVerify) "已开启 · 不校验证书（仅订阅下载）"
+                    else "校验证书（推荐）· 自签名/内网订阅可开启"
+                ) {
+                    Switch(
+                        checked = s.skipTlsVerify,
+                        onCheckedChange = { on -> if (on) showTlsWarning = true else vm.setSkipTlsVerify(false) },
+                        colors = switchColors()
+                    )
+                }
             }
         }
 
@@ -237,6 +250,33 @@ fun SettingsScreen(
             dismissButton = {
                 Text("保持关闭", color = Palette.textDim,
                     modifier = Modifier.clickableNoRipple { showIpv6Warning = false }.padding(8.dp))
+            }
+        )
+    }
+
+    if (showTlsWarning) {
+        androidx.compose.material3.AlertDialog(
+            onDismissRequest = { showTlsWarning = false },
+            containerColor = Palette.bg2,
+            title = { Text("跳过证书校验？", color = Palette.text, fontSize = 16.sp, fontWeight = FontWeight.SemiBold) },
+            text = {
+                Text(
+                    "开启后，下载订阅时不再校验证书，可连接使用自签名证书或内网 HTTPS 的服务器。\n\n" +
+                        "⚠️ 这会降低安全性：对订阅服务器的身份不再有任何保证，可能被中间人篡改配置。\n\n" +
+                        "仅在你信任订阅服务器时开启；普通公网订阅建议保持关闭。",
+                    color = Palette.textDim, fontSize = 12.sp, lineHeight = 18.sp
+                )
+            },
+            confirmButton = {
+                Text("仍然开启", color = Palette.primary, fontWeight = FontWeight.SemiBold,
+                    modifier = Modifier.clickableNoRipple {
+                        showTlsWarning = false
+                        vm.setSkipTlsVerify(true)
+                    }.padding(8.dp))
+            },
+            dismissButton = {
+                Text("取消", color = Palette.textDim,
+                    modifier = Modifier.clickableNoRipple { showTlsWarning = false }.padding(8.dp))
             }
         )
     }

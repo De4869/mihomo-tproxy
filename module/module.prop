@@ -1,7 +1,7 @@
 id=mihomo_tproxy
 name=TunClash 内核
-version=v1.3.0
-versionCode=13
+version=v1.3.1
+versionCode=14
 author=TunClash
 description=Root 级 mihomo 透明代理（TUN 全局接管，不占用 VPN 入口）。内置 WebUI，可脱离 App 独立使用；配合 TunClash App 体验更佳。
 updateJson=https://github.com/De4869/tunclash/releases/latest/download/update.json
