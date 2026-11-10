@@ -33,6 +33,7 @@ class Store(ctx: Context) {
                 adBlock = j.optBoolean("adBlock", false),
                 adUpdateHours = j.optInt("adUpdateHours", 24),
                 mergeFilter = j.optString("mergeFilter", ""),
+                skipTlsVerify = j.optBoolean("skipTlsVerify", false),
                 adSources = j.optJSONArray("adSources")?.let { a ->
                     (0 until a.length()).mapNotNull { i ->
                         val o = a.optJSONObject(i) ?: return@mapNotNull null
@@ -67,6 +68,7 @@ class Store(ctx: Context) {
             j.put("adBlock", v.adBlock)
             j.put("adUpdateHours", v.adUpdateHours)
             j.put("mergeFilter", v.mergeFilter)
+            j.put("skipTlsVerify", v.skipTlsVerify)
             j.put("adSources", org.json.JSONArray().apply {
                 v.adSources.forEach { s ->
                     put(org.json.JSONObject().apply {

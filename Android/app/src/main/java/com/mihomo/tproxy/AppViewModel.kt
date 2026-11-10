@@ -506,7 +506,9 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
             try {
                 var ok = 0
                 val list = s0.adSources.map { src ->
-                    val text = runCatching { SubFetcher.fetch(src.url, 25000).content }.getOrNull()
+                    val text = runCatching {
+                        SubFetcher.fetch(src.url, 25000, store.settings.skipTlsVerify).content
+                    }.getOrNull()
                     if (text == null) src else {
                         ok++
                         src.copy(count = countRuleEntries(text, src.format), updatedAt = System.currentTimeMillis())
@@ -540,6 +542,18 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         val s = store.settings.copy(themeMode = mode)
         store.settings = s
         _state.update { it.copy(settings = s) }
+    }
+
+    /** Subscription-only switch: applied on the next download, the running core is untouched. */
+    fun setSkipTlsVerify(enabled: Boolean) {
+        val s = store.settings.copy(skipTlsVerify = enabled)
+        store.settings = s
+        _state.update { it.copy(settings = s) }
+        if (enabled) {
+            toast("已开启：订阅下载将跳过证书校验")
+        } else {
+            toast("已恢复订阅证书校验")
+        }
     }
 
     fun applySettings(s: ProxySettings) {
@@ -683,7 +697,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
             try {
                 val isUrl = (text.startsWith("http://") || text.startsWith("https://")) && !text.contains("\n")
                 if (isUrl) {
-                    val r = runCatching { SubFetcher.fetch(text) }
+                    val r = runCatching { SubFetcher.fetch(text, insecure = store.settings.skipTlsVerify) }
                     if (r.isFailure) {
                         toast("订阅下载失败: " + (r.exceptionOrNull()?.message ?: ""))
                         doneOnMain(done, false, "下载失败")
@@ -742,7 +756,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         viewModelScope.launch(Dispatchers.IO) {
             _state.update { it.copy(busy = true) }
             try {
-                val r = runCatching { SubFetcher.fetch(p.url) }
+                val r = runCatching { SubFetcher.fetch(p.url, insecure = store.settings.skipTlsVerify) }
                 if (r.isFailure) { toast("更新失败"); return@launch }
                 val sub = r.getOrThrow()
                 val np = p.copy(
@@ -768,7 +782,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
             try {
                 var ok = 0
                 store.profiles.filter { it.kind == "url" && it.url.isNotBlank() }.forEach { p ->
-                    val r = runCatching { SubFetcher.fetch(p.url) }
+                    val r = runCatching { SubFetcher.fetch(p.url, insecure = store.settings.skipTlsVerify) }
                     if (r.isSuccess) {
                         val sub = r.getOrThrow()
                         store.upsert(

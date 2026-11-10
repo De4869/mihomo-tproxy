@@ -2,6 +2,13 @@ package com.mihomo.tproxy.data
 
 import java.net.HttpURLConnection
 import java.net.URL
+import java.security.SecureRandom
+import java.security.cert.X509Certificate
+import javax.net.ssl.HostnameVerifier
+import javax.net.ssl.HttpsURLConnection
+import javax.net.ssl.SSLContext
+import javax.net.ssl.SSLSocketFactory
+import javax.net.ssl.X509TrustManager
 
 data class SubResult(
     val content: String,
@@ -16,7 +23,20 @@ object SubFetcher {
 
     private const val UA = "clash-verge/v2.0.3"
 
-    fun fetch(url: String, timeoutMs: Int = 20000): SubResult {
+    /** Accepts any server certificate. Only used when the user opts in (self-signed / intranet). */
+    private val insecureSocketFactory: SSLSocketFactory by lazy {
+        val ctx = SSLContext.getInstance("TLS")
+        ctx.init(null, arrayOf(object : X509TrustManager {
+            override fun checkClientTrusted(chain: Array<out X509Certificate>?, authType: String?) {}
+            override fun checkServerTrusted(chain: Array<out X509Certificate>?, authType: String?) {}
+            override fun getAcceptedIssuers(): Array<X509Certificate> = emptyArray()
+        }), SecureRandom())
+        ctx.socketFactory
+    }
+
+    private val insecureHostnameVerifier = HostnameVerifier { _, _ -> true }
+
+    fun fetch(url: String, timeoutMs: Int = 20000, insecure: Boolean = false): SubResult {
         var current = url.trim()
         var redirects = 0
         while (redirects < 6) {
@@ -26,6 +46,10 @@ object SubFetcher {
                 instanceFollowRedirects = false
                 setRequestProperty("User-Agent", UA)
                 setRequestProperty("Accept", "*/*")
+                if (insecure && this is HttpsURLConnection) {
+                    sslSocketFactory = insecureSocketFactory
+                    hostnameVerifier = insecureHostnameVerifier
+                }
             }
             try {
                 val code = c.responseCode
